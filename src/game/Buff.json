@@ -1,0 +1,40 @@
+{
+    "buffs": {
+      "poison": {
+        "name": "毒性攻擊",
+        "description": "攻擊使敵人中毒，每秒損失3點生命值",
+        "type": "DOT",
+        "value": 3
+      },
+      "tripleCrit": {
+        "name": "致命打擊",
+        "description": "暴擊傷害提升至三倍",
+        "type": "CRIT_MODIFIER",
+        "value": 3.0
+      },
+      "doubleStrike": {
+        "name": "二連擊",
+        "description": "每次攻擊額外造成一次50%傷害",
+        "type": "MULTI_STRIKE",
+        "value": 0.5
+      },
+      "resurrection": {
+        "name": "不死之身",
+        "description": "死亡時復活一次，恢復50%生命值",
+        "type": "RESURRECTION",
+        "value": 0.5
+      },
+      "lifeSteal": {
+        "name": "生命偷取",
+        "description": "攻擊時恢復造成傷害的10%生命值",
+        "type": "LIFE_STEAL",
+        "value": 0.1
+      },
+      "berserk": {
+        "name": "狂戰士",
+        "description": "生命值低於30%時，攻擊力提升50%",
+        "type": "BERSERK",
+        "value": 0.5
+      }
+    }
+  }

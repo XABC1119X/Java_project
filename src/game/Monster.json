@@ -1,0 +1,84 @@
+{
+    "levels": {
+      "1": {
+        "health": 50,
+        "attackPower": 5,
+        "ultimatePower": 35,
+        "attackSpeed": 5000,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level1.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level1.png"
+        }
+      },
+      "2": {
+        "health": 70,
+        "attackPower": 7,
+        "ultimatePower": 40,
+        "attackSpeed": 4800,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level1.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level1.png"
+        }
+      },
+      "3": {
+        "health": 190,
+        "attackPower": 9,
+        "ultimatePower": 45,
+        "attackSpeed": 4600,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level2.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level2.png"
+        }
+      },
+      "4": {
+        "health": 210,
+        "attackPower": 11,
+        "ultimatePower": 50,
+        "attackSpeed": 4400,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level1.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level1.png"
+        }
+        }
+      },
+      "5": {
+        "health": 230,
+        "attackPower": 13,
+        "ultimatePower": 55,
+        "attackSpeed": 4200,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level3.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level3.png"
+        }
+      },
+      "6": {
+        "health": 250,
+        "attackPower": 15,
+        "ultimatePower": 60,
+        "attackSpeed": 4000,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level3.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level3.png"
+        }
+      },
+      "7": {
+        "health": 270,
+        "attackPower": 17,
+        "ultimatePower": 65,
+        "attackSpeed": 3800,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level2.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level2.png"
+        }
+      },
+      "8": {
+        "health": 290,
+        "attackPower": 19,
+        "ultimatePower": 70,
+        "attackSpeed": 3600,
+        "images": {
+          "normal": "src\\assets\\images\\monster\\monster_level4.png",
+          "defeat": "src\\assets\\images\\monster\\GG_monster_level4.png"
+        }
+      }
+  }
