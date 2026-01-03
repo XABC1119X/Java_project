@@ -23,13 +23,14 @@ public class GameLogic {
     
 
     private int level = 1;
-    private final int maxLevel = 8;
+    private final int maxLevel = GameConstants.MAX_LEVEL;
+    private TimerManager timerManager;
     public GameLogic() {};
     public GameLogic(GameInterface gameInterface, Player player, Monster monster) {
         this.gameInterface = gameInterface;
         this.player = player;
         this.monster = monster;
-        
+        this.timerManager = TimerManager.getInstance();
     }
 
     public void setBuffManager(BuffManager buffManager) {
@@ -38,10 +39,69 @@ public class GameLogic {
     public Monster getCurrentTarget() {
         return monster;
     }
+    
+    public int getLevel() {
+        return level;
+    }
+    
+    public GameInterface getGameInterface() {
+        return gameInterface;
+    }
+    
+    public BuffManager getBuffManager() {
+        return buffManager;
+    }
+    
+    public void slowMonsterAttack(double factor, int duration) {
+        // 暫停當前怪物攻擊計時器
+        if (monsterAttackTimer != null) {
+            timerManager.cancelTimer(monsterAttackTimer);
+        }
+        
+        // 計算新的攻擊速度
+        int originalSpeed = monster.getAttackSpeed();
+        int slowedSpeed = (int)(originalSpeed / (1 - factor));
+        
+        // 創建新的計時器
+        monsterAttackTimer = timerManager.createTimer();
+        monsterAttackTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (!isGameOver && !isPaused) {
+                    monster.showAttackAnimation();
+                    player.takeDamage(monster.getAttackPower());
+                    gameInterface.updateUI();
+                    checkPlayerHealth();
+                }
+            }
+        }, 0, slowedSpeed);
+        
+        // 恢復原始速度
+        timerManager.createTimer(new TimerTask() {
+            @Override
+            public void run() {
+                if (monsterAttackTimer != null) {
+                    timerManager.cancelTimer(monsterAttackTimer);
+                }
+                monsterAttackTimer = timerManager.createTimer();
+                monsterAttackTimer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (!isGameOver && !isPaused) {
+                            monster.showAttackAnimation();
+                            player.takeDamage(monster.getAttackPower());
+                            gameInterface.updateUI();
+                            checkPlayerHealth();
+                        }
+                    }
+                }, 0, originalSpeed);
+            }
+        }, duration);
+    }
     public void startGame() {
         gameInterface.updateUI();
         
-        new Timer().schedule(new TimerTask() {
+        timerManager.createTimer(new TimerTask() {
             @Override
             public void run() {
                 startTimers();
@@ -55,7 +115,7 @@ public class GameLogic {
         stopTimers();
         
         // 延遲1秒顯示結果
-        new Timer().schedule(new TimerTask() {
+        timerManager.createTimer(new TimerTask() {
             @Override
             public void run() {
                 JFrame frame = gameInterface.getFrame();
@@ -137,20 +197,16 @@ public class GameLogic {
     private void startTimers() {
         if (isPaused || isGameOver) return;
         
-        playerAttackTimer = new Timer();
-        monsterAttackTimer = new Timer();
+        playerAttackTimer = timerManager.createTimer();
+        monsterAttackTimer = timerManager.createTimer();
         scheduleAttacks();
     }
 
     private void stopTimers() {
-        if (playerAttackTimer != null) {
-            playerAttackTimer.cancel();
-            playerAttackTimer = null;
-        }
-        if (monsterAttackTimer != null) {
-            monsterAttackTimer.cancel();
-            monsterAttackTimer = null;
-        }
+        timerManager.cancelTimer(playerAttackTimer);
+        timerManager.cancelTimer(monsterAttackTimer);
+        playerAttackTimer = null;
+        monsterAttackTimer = null;
     }
     
 
@@ -173,10 +229,10 @@ public class GameLogic {
             @Override
             public void run() {
                 if (!isGameOver && !isPaused) {
-                    int d = player.getCriticalAttackPower();
+                    int criticalDamage = player.getCriticalAttackPower();
                     player.showAttackAnimation();
-                    player.lifeSteal(d);
-                    monster.takeDamage(d, player.getAttackPower());   
+                    player.lifeSteal(criticalDamage);
+                    monster.takeDamage(criticalDamage, player.getAttackPower());   
                     gameInterface.updateUI();
                     checkMonsterHealth();
                 }
@@ -197,31 +253,37 @@ public class GameLogic {
     }
 
     public void handleUltimateAttack() {
-        File sound = new File("src/assets/sound/Ult.wav"); 
-        try {
-            AudioInputStream audioIn = AudioSystem.getAudioInputStream(sound);
+        File sound = new File(GameConstants.SOUND_PATH + "Ult.wav"); 
+        try (AudioInputStream audioIn = AudioSystem.getAudioInputStream(sound)) {
             Clip clip = AudioSystem.getClip();
             clip.open(audioIn);
-            clip.start(); 
+            clip.start();
+            // 使用 LineListener 在播放完成後關閉
+            clip.addLineListener(event -> {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    clip.close();
+                }
+            });
         } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
-            e.printStackTrace();
+            System.err.println("無法載入音訊檔案: " + e.getMessage());
+            // 不中斷遊戲，繼續執行
         }
-        // 計算大招傷害(基礎攻擊力的3倍)
-        int ultimateDamage = 9999999;
+        
+        // 使用常數定義的終極傷害
+        int ultimateDamage = GameConstants.ULTIMATE_DAMAGE;
         
         // 暫停普通攻擊
         pauseGame();
         
         // 延遲傷害，等待動畫播放
-        new Timer().schedule(new TimerTask() {
+        timerManager.createTimer(new TimerTask() {
             @Override
             public void run() {
                 monster.takeDamage(ultimateDamage, ultimateDamage);
                 gameInterface.updateUI();
                 checkMonsterHealth();
-                
             }
-        }, 4750); // 等待1秒讓動畫播放
+        }, GameConstants.ULTIMATE_ANIMATION_DELAY);
     }
 
     private void nextLevel() {
@@ -245,7 +307,7 @@ public class GameLogic {
             gameInterface.updateUI();
             
             // Delay before restarting timers
-            new Timer().schedule(new TimerTask() {
+            timerManager.createTimer(new TimerTask() {
                 @Override
                 public void run() {
                     resumeGame();
@@ -278,7 +340,7 @@ public class GameLogic {
             pauseGame();
             
             if (level < maxLevel) {
-                new Timer().schedule(new TimerTask() {
+                timerManager.createTimer(new TimerTask() {
                     @Override
                     public void run() {
                         nextLevel();
@@ -300,40 +362,20 @@ public class GameLogic {
 
 
     public void handleMagicCard(String cardText) {
-        int cost = 0;
-        boolean success = false;
+        MagicCardType cardType = MagicCardType.fromText(cardText);
         
-        if (cardText.contains("攻速")) {
-            cost = 50;
-            if (player.spendCoins(cost)) {
-                player.increaseAttackSpeed(100);
-                success = true;
-            }
-        } else if (cardText.contains("攻擊力")) {
-            cost = 30;
-            if (player.spendCoins(cost)) {
-                player.increaseAttackPower(5);
-                success = true;
-            }
-        } else if (cardText.contains("生命值")) {
-            cost = 20;
-            if (player.spendCoins(cost)) {
-                player.increaseMaxHealth(20);
-                success = true;
-            }
-        } else if (cardText.contains("暴擊率")) {
-            cost = 40;
-            if (player.spendCoins(cost)) {
-                player.increaseCriticalRate(0.1);
-                success = true;
-            }
+        if (cardType == null) {
+            JOptionPane.showMessageDialog(gameInterface.getFrame(), "無效的卡片類型！");
+            return;
         }
         
-        if (!success) {
+        int cost = cardType.getCost();
+        if (player.spendCoins(cost)) {
+            cardType.applyEffect(player);
+            gameInterface.regenerateMagicCards();
+            gameInterface.updateUI();
+        } else {
             JOptionPane.showMessageDialog(gameInterface.getFrame(), "金幣不足！");
         }
-        
-        gameInterface.regenerateMagicCards();
-        gameInterface.updateUI();
     }
 }

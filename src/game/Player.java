@@ -2,7 +2,6 @@ package src.game;
 
 import java.awt.Point;
 import java.util.Random;
-import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -17,6 +16,7 @@ public class Player {
     private double damageReduction;
     private double lifeSteal;
     private double criticalRate;
+    private boolean invulnerable = false;
     private static final Random random = new Random();
 
     // Images
@@ -69,13 +69,13 @@ public class Player {
     }
 
     private void initializeStats() {
-        this.health = 100;
-        this.maxHealth = 100;
-        this.attackPower = 30;
-        this.attackSpeed = 2000;
-        this.coins = 100;
-        this.criticalRate = 0.0;
-        this.criticalDamageMultiplier = 2.0;
+        this.health = GameConstants.INITIAL_PLAYER_HEALTH;
+        this.maxHealth = GameConstants.INITIAL_PLAYER_MAX_HEALTH;
+        this.attackPower = GameConstants.INITIAL_PLAYER_ATTACK_POWER;
+        this.attackSpeed = GameConstants.INITIAL_PLAYER_ATTACK_SPEED;
+        this.coins = GameConstants.INITIAL_PLAYER_COINS;
+        this.criticalRate = GameConstants.INITIAL_PLAYER_CRITICAL_RATE;
+        this.criticalDamageMultiplier = GameConstants.INITIAL_PLAYER_CRITICAL_DAMAGE_MULTIPLIER;
         this.damageReduction = 0.0; 
         this.lifeSteal = 0.0;
     }
@@ -94,14 +94,14 @@ public class Player {
         portraitLabel.setIcon(attackPortrait);
         addSlashEffect();
         // Reset after delay
-        new Timer().schedule(new TimerTask() {
+        TimerManager.getInstance().createTimer(new TimerTask() {
             @Override
             public void run() {
                 portraitLabel.setIcon(heroPortrait);
                 moveHero(-150);
                 slashLabel.setVisible(false);
             }
-        }, 500);
+        }, GameConstants.ATTACK_ANIMATION_DURATION);
     }
 /* 
     public void showDefenseAnimation() {
@@ -115,6 +115,9 @@ public class Player {
   
 
     public void takeDamage(int damage) {
+        if (invulnerable) {
+            return; // 無敵狀態下不受傷害
+        }
         int reducedDamage = (int)(damage * (1 - damageReduction));
         this.health = Math.max(0, this.health - reducedDamage);
         
@@ -129,7 +132,7 @@ public class Player {
 
     public void lifeSteal(int amount) {
         if(!(lifeSteal == 0)) {
-            int actualHeal = Math.min(maxHealth - health, this.health + (int) Math.ceil(amount * lifeSteal));
+            int actualHeal = Math.min(maxHealth - health, (int) Math.ceil(amount * lifeSteal));
             this.health += actualHeal;
             // 創建治療數字特效
             DamageNumber healNumber = new DamageNumber(actualHeal, DamageNumber.NumberType.HEALING, portraitLabel.getParent());
@@ -192,7 +195,7 @@ public class Player {
     }
     
     public void increaseAttackSpeed(int reduction) {
-        this.attackSpeed = Math.max(600, this.attackSpeed - reduction);
+        this.attackSpeed = Math.max(GameConstants.MIN_ATTACK_SPEED, this.attackSpeed - reduction);
     }
     
 
@@ -220,5 +223,53 @@ public class Player {
     
     public void setLifeSteal(double lifeSteal) {
         this.lifeSteal = lifeSteal;
+    }
+    
+    // Additional getters and setters for save/load
+    public double getCriticalDamageMultiplier() {
+        return criticalDamageMultiplier;
+    }
+    
+    public double getDamageReduction() {
+        return damageReduction;
+    }
+    
+    public double getLifeSteal() {
+        return lifeSteal;
+    }
+    
+    public void setHealth(int health) {
+        this.health = Math.max(0, Math.min(health, maxHealth));
+    }
+    
+    public void setMaxHealth(int maxHealth) {
+        this.maxHealth = maxHealth;
+        if (this.health > maxHealth) {
+            this.health = maxHealth;
+        }
+    }
+    
+    public void setAttackPower(int attackPower) {
+        this.attackPower = attackPower;
+    }
+    
+    public void setAttackSpeed(int attackSpeed) {
+        this.attackSpeed = attackSpeed;
+    }
+    
+    public void setCoins(int coins) {
+        this.coins = coins;
+    }
+    
+    public void setCriticalRate(double criticalRate) {
+        this.criticalRate = Math.max(0.0, Math.min(1.0, criticalRate));
+    }
+    
+    public void setInvulnerable(boolean invulnerable) {
+        this.invulnerable = invulnerable;
+    }
+    
+    public boolean isInvulnerable() {
+        return invulnerable;
     }
 }

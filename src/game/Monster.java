@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -45,7 +44,8 @@ public class Monster {
                 Paths.get("src", "game", "Monster.json")));
             
             // 簡單的JSON解析，尋找關鍵字並提取數值
-            for (int level = 1; level <= 8; level++) {
+            // TODO: 改用 Gson 庫進行更穩定的解析
+            for (int level = 1; level <= GameConstants.MAX_LEVEL; level++) {
                 MonsterLevel levelData = new MonsterLevel();
                 String levelSection = extractLevelSection(jsonContent, level);
                 
@@ -59,8 +59,10 @@ public class Monster {
                 monsterLevels.put(level, levelData);
             }
         } catch (Exception e) {
+            System.err.println("無法載入怪物數據: " + e.getMessage());
             e.printStackTrace();
-            System.exit(1);
+            // 使用預設值而不是直接退出
+            initializeDefaultMonsterData();
         }
     }
 
@@ -111,7 +113,7 @@ public class Monster {
     }
 
     public int getDropCoins() {
-        return 10 * level; // Drops more coins in higher levels
+        return GameConstants.BASE_COIN_DROP * level; // Drops more coins in higher levels
     }
     
     private void moveMonster(int deltaX) {
@@ -123,12 +125,12 @@ public class Monster {
         moveMonster(-150); 
         
         // Reset after delay
-        new Timer().schedule(new TimerTask() {
+        TimerManager.getInstance().createTimer(new TimerTask() {
             @Override
             public void run() {
                 moveMonster(150);
             }
-        }, 500);
+        }, GameConstants.ATTACK_ANIMATION_DURATION);
     }
     public void showDefeatAnimation() {
         portraitLabel.setIcon(defeatPortrait);
@@ -136,9 +138,9 @@ public class Monster {
 
     
     
-    public void takeDamage(int damage , int odamage) {
+    public void takeDamage(int damage, int originalDamage) {
         this.health = Math.max(0, this.health - damage);
-        boolean isCritical = (damage / 2) >= odamage;
+        boolean isCritical = (damage / 2) >= originalDamage;
     
         // 創建並顯示傷害數字
         DamageNumber damageNumber = new DamageNumber(damage, isCritical, portraitLabel.getParent());
@@ -152,6 +154,21 @@ public class Monster {
 
     public void upgradeForNewLevel(int newLevel) {
         initializeLevel(newLevel);
+    }
+    
+    private void initializeDefaultMonsterData() {
+        // 如果 JSON 載入失敗，使用預設值
+        monsterLevels = new HashMap<>();
+        for (int level = 1; level <= GameConstants.MAX_LEVEL; level++) {
+            MonsterLevel levelData = new MonsterLevel();
+            levelData.health = 50 + level * 20;
+            levelData.attackPower = 5 + level * 2;
+            levelData.ultimatePower = 35 + level * 5;
+            levelData.attackSpeed = 5000 - level * 200;
+            levelData.normalImage = "src\\assets\\images\\monster\\monster_level1.png";
+            levelData.defeatImage = "src\\assets\\images\\monster\\GG_monster_level1.png";
+            monsterLevels.put(level, levelData);
+        }
     }
 
     // Getters

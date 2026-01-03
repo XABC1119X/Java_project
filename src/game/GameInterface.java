@@ -11,6 +11,9 @@ public class GameInterface {
     private Monster monster;
     private GameLogic gameLogic;
     private ActiveBuffsPanel activeBuffsPanel;
+    private SaveManager saveManager;
+    private SkillManager skillManager;
+    private BuffManager buffManager;
 
     private JFrame frame;
     private JLayeredPane mainLayeredPane;
@@ -20,9 +23,11 @@ public class GameInterface {
     private ModernButton[] magicCards = new ModernButton[4];
     private ModernButton showBuffsButton, ultimateButton;;
     
-    public GameInterface(Player player, Monster monster) {
+    public GameInterface(Player player, Monster monster, SaveManager saveManager, SkillManager skillManager) {
         this.player = player;
         this.monster = monster;
+        this.saveManager = saveManager;
+        this.skillManager = skillManager;
         showStartMenu();
     }
     public JFrame getTheFrame() {
@@ -33,6 +38,14 @@ public class GameInterface {
     }
     public void setActiveBuffPanel(ActiveBuffsPanel activeBuffsPanel) {
         this.activeBuffsPanel = activeBuffsPanel;
+    }
+    
+    public void setSaveManager(SaveManager saveManager) {
+        this.saveManager = saveManager;
+    }
+    
+    public void setSkillManager(SkillManager skillManager) {
+        this.skillManager = skillManager;
     }
 
     private void showStartMenu() {
@@ -56,14 +69,23 @@ public class GameInterface {
         // 設定按鈕大小與樣式
         Dimension buttonSize = new Dimension(200, 50);
         ModernButton startButton = new ModernButton("開始遊戲");
+        ModernButton continueButton = new ModernButton("繼續遊戲");
+        ModernButton shopButton = new ModernButton("商店");
         ModernButton helpButton = new ModernButton("幫助");
         ModernButton exitButton = new ModernButton("離開");
-    
+        
         startButton.setPreferredSize(buttonSize);
+        continueButton.setPreferredSize(buttonSize);
+        shopButton.setPreferredSize(buttonSize);
         helpButton.setPreferredSize(buttonSize);
         exitButton.setPreferredSize(buttonSize);
-    
+        
+        // 檢查是否有存檔
+        continueButton.setEnabled(saveManager != null && saveManager.hasSaveFile());
+        
         startButton.addActionListener(e -> setupGameWindow());
+        continueButton.addActionListener(e -> loadAndContinueGame());
+        shopButton.addActionListener(e -> showShop());
         helpButton.addActionListener(e -> showHelpMenu());
         exitButton.addActionListener(e -> System.exit(0));
     
@@ -75,10 +97,16 @@ public class GameInterface {
     
         gbc.gridy++;
         mainPanel.add(startButton, gbc);
-    
+        
+        gbc.gridy++;
+        mainPanel.add(continueButton, gbc);
+        
+        gbc.gridy++;
+        mainPanel.add(shopButton, gbc);
+        
         gbc.gridy++;
         mainPanel.add(helpButton, gbc);
-    
+        
         gbc.gridy++;
         mainPanel.add(exitButton, gbc);
     
@@ -131,8 +159,10 @@ public class GameInterface {
  
          // 大招特效層
          JPanel  ultimateEffectLayer = new JPanel(null);
+         ultimateEffectLayer.setBounds(0, 0, frame.getWidth(), frame.getHeight());
+         ultimateEffectLayer.setOpaque(false);
          setupUltimateEffect(ultimateEffectLayer);
-         mainLayeredPane.add(ultimateEffectLabel, JLayeredPane.POPUP_LAYER);
+         mainLayeredPane.add(ultimateEffectLayer, JLayeredPane.POPUP_LAYER);
 
         // 更新所有元素的層級
         updateComponentLayers();
@@ -192,8 +222,8 @@ public class GameInterface {
     
     private void setupBuffsButton() {
         // 創建按鈕面板
-        JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 0, 10));
-        buttonPanel.setBounds(640, 460, 140, 100);
+        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 0, 10));
+        buttonPanel.setBounds(640, 420, 140, 140);
         buttonPanel.setOpaque(false);
         
         showBuffsButton = new ModernButton("查看增益效果");
@@ -201,6 +231,21 @@ public class GameInterface {
         showBuffsButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
         showBuffsButton.setBackground(new Color(75, 0, 130));
         showBuffsButton.setForeground(Color.WHITE);
+        
+        ModernButton saveButton = new ModernButton("保存遊戲");
+        saveButton.setPreferredSize(new Dimension(130, 45));
+        saveButton.setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
+        saveButton.setBackground(new Color(0, 100, 0));
+        saveButton.setForeground(Color.WHITE);
+        saveButton.addActionListener(e -> {
+            if (saveManager != null && gameLogic != null) {
+                // 需要從 gameLogic 獲取 buffManager
+                BuffManager bm = gameLogic.getBuffManager();
+                if (bm != null) {
+                    saveManager.saveGame(player, gameLogic, bm);
+                }
+            }
+        });
         
         ultimateButton = new ModernButton("終極一擊");
         ultimateButton.setPreferredSize(new Dimension(130, 45));
@@ -233,6 +278,7 @@ public class GameInterface {
         });
         
         buttonPanel.add(showBuffsButton);
+        buttonPanel.add(saveButton);
         buttonPanel.add(ultimateButton);
         mainLayeredPane.add(buttonPanel, JLayeredPane.PALETTE_LAYER);
         
@@ -254,23 +300,18 @@ public class GameInterface {
         cardPanel.setBounds(20, 460, 600, 100);
         cardPanel.setOpaque(false);
         
-        String[] cardTypes = {
-            "攻速 + 1\n(消耗50金幣)",
-            "攻擊力 +5\n(消耗30金幣)",
-            "生命值 +20\n(消耗20金幣)",
-            "暴擊率 +10%\n(消耗40金幣)"
-        };
+        MagicCardType[] cardTypes = MagicCardType.values();
         
-        magicCards = new ModernButton[4];
+        magicCards = new ModernButton[cardTypes.length];
         for (int i = 0; i < magicCards.length; i++) {
-            magicCards[i] = new ModernButton(cardTypes[i]);
+            final MagicCardType cardType = cardTypes[i];
+            magicCards[i] = new ModernButton(cardType.getCardText());
             magicCards[i].setFont(new Font("Microsoft YaHei", Font.BOLD, 14));
             magicCards[i].setBackground(new Color(45, 45, 45));
             magicCards[i].setForeground(Color.WHITE);
             
-            final int cardIndex = i;
             magicCards[i].addActionListener(e -> {
-                gameLogic.handleMagicCard(cardTypes[cardIndex] + " (消耗金幣)");
+                gameLogic.handleMagicCard(cardType.getCardText());
             });
             
             cardPanel.add(magicCards[i]);
@@ -280,15 +321,9 @@ public class GameInterface {
     }
     
     public void regenerateMagicCards() {
-        String[] cardTypes = {
-            "攻速 + 1\n(消耗50金幣)",
-            "攻擊力 +5\n(消耗30金幣)",
-            "生命值 +20\n(消耗20金幣)",
-            "暴擊率 +10%\n(消耗40金幣)"
-        };
-
-        for (int i = 0; i < magicCards.length; i++) {
-            magicCards[i].setText(cardTypes[i]);
+        MagicCardType[] cardTypes = MagicCardType.values();
+        for (int i = 0; i < magicCards.length && i < cardTypes.length; i++) {
+            magicCards[i].setText(cardTypes[i].getCardText());
         }
     }
     
@@ -328,44 +363,34 @@ public class GameInterface {
         slashLabel2.setVisible(false);  
     }
     
-    public void addSlashEffect() {
+    public void addSlashEffect(int effectIndex) {
+        JLabel slashLabel = (effectIndex == 1) ? slashLabel1 : slashLabel2;
+        
         Point position = monster.getPortraitLabel().getLocation();
-    
-        slashLabel1.setLocation(position.x-160, position.y-130);  
+        slashLabel.setLocation(position.x - 160, position.y - 130);
     
         javax.swing.JComponent parent = (javax.swing.JComponent) monster.getPortraitLabel().getParent();
-        parent.add(slashLabel1);
-        parent.setComponentZOrder(slashLabel1, 1);  
-        slashLabel1.setVisible(true);
+        parent.add(slashLabel);
+        parent.setComponentZOrder(slashLabel, 1);
+        slashLabel.setVisible(true);
         parent.revalidate();
         parent.repaint();
     
-        Timer timer = new Timer(1000, event -> {
-            slashLabel1.setVisible(false);
-            parent.repaint();  
+        javax.swing.Timer timer = new javax.swing.Timer(GameConstants.SLASH_EFFECT_DURATION, event -> {
+            slashLabel.setVisible(false);
+            parent.repaint();
         });
         timer.setRepeats(false);
         timer.start();
     }
-
+    
+    // 保持向後兼容
+    public void addSlashEffect() {
+        addSlashEffect(1);
+    }
+    
     public void addSlashEffect2() {
-        Point position = monster.getPortraitLabel().getLocation();
-    
-        slashLabel2.setLocation(position.x-160, position.y-130);  
-    
-        javax.swing.JComponent parent = (javax.swing.JComponent) monster.getPortraitLabel().getParent();
-        parent.add(slashLabel2);
-        parent.setComponentZOrder(slashLabel2, 1);  
-        slashLabel2.setVisible(true);
-        parent.revalidate();
-        parent.repaint();
-    
-        Timer timer = new Timer(1000, event -> {
-            slashLabel2.setVisible(false);
-            parent.repaint();  
-        });
-        timer.setRepeats(false);
-        timer.start();
+        addSlashEffect(2);
     }
     
     public void showUltimateAnimation() {
@@ -456,10 +481,58 @@ public class GameInterface {
             "遊戲說明：\n\n" +
             "1. 你的目標是打敗怪物\n" +
             "2. 使用魔法卡片增強能力\n" +
-            "3. 注意管理你的魔力值和金幣\n" +
-            "4. 活下去！",
+            "3. 使用技能欄中的技能（快捷鍵 1-4）\n" +
+            "4. 注意管理你的金幣\n" +
+            "5. 可以在商店購買永久升級\n" +
+            "6. 記得保存遊戲進度\n" +
+            "7. 活下去！",
             "遊戲說明",
             JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private void loadAndContinueGame() {
+        if (saveManager == null) return;
+        
+        SaveData saveData = saveManager.loadGame();
+        if (saveData == null) {
+            JOptionPane.showMessageDialog(frame, "沒有找到存檔！", "載入失敗", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        
+        // 恢復玩家狀態
+        saveManager.restorePlayerState(saveData, player);
+        
+        // 恢復 Buff
+        if (gameLogic != null) {
+            BuffManager bm = gameLogic.getBuffManager();
+            if (bm != null) {
+                for (String buffId : saveData.getActiveBuffs()) {
+                    bm.applyBuff(buffId);
+                }
+            }
+        }
+        
+        // 設置關卡
+        if (gameLogic != null) {
+            // 需要添加設置關卡的方法
+        }
+        
+        setupGameWindow();
+    }
+    
+    private void showShop() {
+        JFrame shopFrame = new JFrame("商店");
+        shopFrame.setSize(600, 500);
+        shopFrame.setLocationRelativeTo(frame);
+        shopFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        
+        ShopPanel shopPanel = new ShopPanel(player, () -> {
+            shopFrame.dispose();
+            updateUI();
+        });
+        
+        shopFrame.add(shopPanel);
+        shopFrame.setVisible(true);
     }
 
     public JFrame getFrame() {
